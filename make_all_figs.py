@@ -128,7 +128,6 @@ def fig1():
     fig.subplots_adjust(hspace=0.06)
     save(fig, 'fig1_h2_alpha_R')
 
-
 # ════════════════════════════════════════════════════════════
 # FIG 2. H2 relative change vs R, two frequencies
 # ════════════════════════════════════════════════════════════
@@ -147,18 +146,18 @@ def fig2():
         ax[k].set_ylabel(r'$\Delta\alpha_{zz}/\alpha_{zz}^{(0)}$ (%)')
         ax[k].xaxis.set_minor_locator(AutoMinorLocator(2))
         ax[k].yaxis.set_minor_locator(AutoMinorLocator(2))
-        if k:
-            ax[k].text(0.03, 0.06, '(%s) $\\omega_{\\rm c}=%.4f$ a.u.'
-                       % ('ab'[k], om), transform=ax[k].transAxes,
-                       fontsize=LBL_FS)
+        # подпись панели -- внутри рамки, по центру
+        ax[k].text(0.5, 0.5, r'(%s) $\omega_{\rm c}=%.4f$ a.u.'
+                   % ('ab'[k], om), transform=ax[k].transAxes,
+                   ha='center', va='center', fontsize=LBL_FS)
     ax[1].set_xlabel(ANG)
     ax[1].set_xlim(0.5, 4.0)
-    leg = ax[0].legend(loc='upper right',
-                       title=r'(a) $\omega_{\rm c}=0.4687$ a.u.')
-    leg.get_title().set_fontsize(LBL_FS)
+    # легенда -- обычным боксом внутри нижней панели, в левом нижнем углу
+    handles, labels_ = ax[0].get_legend_handles_labels()
+    leg = ax[1].legend(handles, labels_, loc='lower left', ncol=1,
+                       fontsize=LBL_FS)
     fig.subplots_adjust(hspace=0.06)
     save(fig, 'fig2_h2_relative_R')
-
 
 # ════════════════════════════════════════════════════════════
 # FIG 3. Decomposition vs lambda at equilibrium (central result)
@@ -188,7 +187,7 @@ def fig3():
         ax[k].set_ylabel(r'$\Delta\alpha_{zz}/\alpha_{zz}^{(0)}$ (%)')
         ax[k].xaxis.set_minor_locator(AutoMinorLocator(2))
         ax[k].yaxis.set_minor_locator(AutoMinorLocator(2))
-        leg = ax[k].legend(loc='upper right',
+        leg = ax[k].legend(loc='lower left',
                            title=f'({"ab"[k]}) {name}, $R=R_e$')
         leg.get_title().set_fontsize(LBL_FS)
     ax[1].set_xlabel(r'$\lambda$ (a.u.)')
@@ -220,7 +219,7 @@ def fig4():
         if k:
             a.text(0.03, 0.90, '(%s)' % 'abc'[k], transform=a.transAxes,
                    va='top', fontsize=LBL_FS)
-    leg = ax[0].legend(loc='upper right',
+    leg = ax[0].legend(loc='lower left',
                        title=r'(a) LiH, $\omega_{\rm c}=0.0064$ a.u.')
     leg.get_title().set_fontsize(LBL_FS)
     fig.subplots_adjust(hspace=0.06)
@@ -251,7 +250,7 @@ def fig5():
                        fontsize=LBL_FS)
     ax[1].set_xlabel(ANG)
     ax[1].set_xlim(0.8, 3.0)
-    leg = ax[0].legend(loc='upper left', ncol=2, columnspacing=1.0,
+    leg = ax[0].legend(loc='center left', ncol=2, columnspacing=1.0,
                        title=r'(a) $\omega_{\rm c}=0.1208$ a.u.')
     leg.get_title().set_fontsize(LBL_FS)
     fig.subplots_adjust(hspace=0.06)
@@ -324,7 +323,7 @@ def fig7():
     ax.set_xlim(-0.003, 0.053)
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
-    ax.legend(loc='upper left', ncol=1)
+    ax.legend(loc='upper left', ncol=1, fontsize=LBL_FS)
 
     sec = ax.secondary_yaxis(
         'right',
@@ -332,8 +331,8 @@ def fig7():
                    lambda h: -2.0 * h / (E2 * AU_HZ)))
     sec.set_ylabel(r'$\delta\nu_{\rm BBR}$ at 300 K (Hz)')
     sec.tick_params(labelsize=8)
+    fig.subplots_adjust(left=0.16, right=0.80, bottom=0.16, top=0.96)
     save(fig, 'fig7_he_differential')
-
 
 # ════════════════════════════════════════════════════════════
 # FIG 8. Isotropic polarizability vs R, both molecules
@@ -352,10 +351,14 @@ def fig8():
         ax[k].set_xlim(lo, hi)
         ax[k].xaxis.set_minor_locator(AutoMinorLocator(2))
         ax[k].yaxis.set_minor_locator(AutoMinorLocator(2))
-        leg = ax[k].legend(loc='upper left' if k == 0 else 'upper right',
-                           ncol=2 if k else 1,
-                           columnspacing=1.0,
-                           title=rf'({"ab"[k]}) {name}, $\omega_{{\rm c}}={om:.4f}$')
+        if k == 0:
+            leg = ax[k].legend(loc='center', bbox_to_anchor=(0.5, 0.4),
+                               ncol=1, columnspacing=1.0,
+                               title=rf'({"ab"[k]}) {name}, $\omega_{{\rm c}}={om:.4f}$')
+        else:
+            leg = ax[k].legend(loc='upper left',
+                               ncol=1, columnspacing=1.0,
+                               title=rf'({"ab"[k]}) {name}, $\omega_{{\rm c}}={om:.4f}$')
         leg.get_title().set_fontsize(LBL_FS)
     ax[1].set_xlabel(ANG)
     fig.subplots_adjust(hspace=0.28)
@@ -458,7 +461,7 @@ def fig_cc_vs_fci():
     ax[0].set_ylabel(r'$E(\lambda)-E(0)$ (mHa)')
     ax[0].xaxis.set_minor_locator(AutoMinorLocator(2))
     ax[0].yaxis.set_minor_locator(AutoMinorLocator(2))
-    leg = ax[0].legend(loc='lower left', title=r'(a) H$_2$, $R=R_e$')
+    leg = ax[0].legend(loc='upper left', title=r'(a) H$_2$, $R=R_e$')
     leg.get_title().set_fontsize(LBL_FS)
 
     ratio = d_cc[1:] / d_fci[1:]
@@ -470,7 +473,7 @@ def fig_cc_vs_fci():
     ax[1].xaxis.set_minor_locator(AutoMinorLocator(2))
     ax[1].yaxis.set_minor_locator(AutoMinorLocator(2))
     ax[1].set_xlim(-0.005, 0.155)
-    ax[1].text(0.03, 0.90, r'(b) QED-CCSD overestimates the cavity shift'
+    ax[1].text(0.05, 0.50, r'(b) QED-CCSD overestimates the cavity shift'
               '\nby a factor of $\\approx 1.26$ at all $\\lambda$',
               transform=ax[1].transAxes, va='top', fontsize=LBL_FS)
 
