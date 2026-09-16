@@ -1,3 +1,0 @@
-# atom = He, charge = 0, ms = 0, root = 1, target_spin = None
-# omega = 0.0293, basis = aug-cc-pvqz, diffuse = 0, h = 0.002, nboson = 4
-# columns          = lambda,E,a_xx,a_yy,a_zz,a_iso,a_aniso,err_xx,err_zz,dse_a_xx,dse_a_zz,dse_a_iso,boson_gap,status
