@@ -1,73 +1,46 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 r"""
 qedfci_scan.py
 ==============
-Дипольный момент и тензор поляризуемости двухатомной молекулы в оптической
-полости на уровне QED-FCI. Интерфейс тот же, что у qedcc_scan.py, чтобы
-результаты двух методов сравнивались точка в точку.
+Dipole moment and polarizability tensor of a diatomic molecule in an optical
+cavity at the QED-FCI level. The interface is the same as qedcc_scan.py so that
+results from the two methods can be compared point-by-point.
 
-Ядро расчёта (fboson_ci_shape, contract_2e, contract_eb, contract_bb,
-absorb_h1e, make_hdiag, qed_fci_kernel, build_geometry_data) перенесено из
-проверенного fci.py: оно сверено с пакетом eT и не ломается при сильной
-связи и больших R.
-
-ЕДИНСТВЕННОЕ ОТЛИЧИЕ ОТ fci.py ПО ФИЗИКЕ — знак электронного полевого члена.
-В fci.py стояло  H1 -= F.<r>,  здесь  H1 += F.<r>.  Физическое возмущение
-H' = -mu.F при mu_e = -sum_i r_i даёт именно +F.<r>, и тогда
-
-    mu_i = -dE/dF_i,   alpha_ij = -d^2E/dF_i dF_j
-
-работают напрямую и для полярных молекул тоже. В fci.py знак компенсировался
-формулой mu_full = mu_nuc - mu_e_z, что верно лишь при mu_nuc = 0, то есть
-только для центрированной геометрии. На alpha (чётная производная) смена
-знака не влияет вовсе.
-
-ПОЧЕМУ FCI, А НЕ CC
--------------------
-QED-CCSD-U22-S2 систематически недооценивает электрон-фотонную корреляцию
-из-за усечения по фотонным возбуждениям; для H2 это показано на рис. 6a в
-J. Chem. Theory Comput. 21, 10035 (2025). Замер на H2/Sadlej при lambda=0.1,
-R=0.74 дал расхождение по эффекту полости в 2.5 раза. QED-FCI от этого
-свободен: число фоковских состояний задаётся --nboson и стоит линейно.
-
-ПОСТРОЕНИЕ ГАМИЛЬТОНИАНА
+HAMILTONIAN CONSTRUCTION
 ------------------------
-D_pq = (lambda . <p|r|q>) в МО. Разбиение DSE-члена АСИММЕТРИЧНО:
+D_pq = (lambda . <p|r|q>) in MO basis. DSE term splitting is ASYMMETRIC:
 
     H1 += 0.5 * (D @ D)
-    H2 += 1.0 * outer(D, D)      <- именно 1.0, не 0.5
+    H2 += 1.0 * outer(D, D)      <- exactly 1.0, not 0.5
 
-Коэффициент 1.0 возникает потому, что absorb_h1e складывает одноэлектронную
-часть в ОБЕ пары индексов H2 (h2e[k,k,:,:] и h2e[:,:,k,k]); наивно
-симметричное разбиение 0.5/0.5 даёт молча неверную энергию. Проверено
-против прямой тензорной диагонализации до 1e-15 Ha.
+The coefficient 1.0 arises because absorb_h1e accumulates the one-electron
+part in BOTH index pairs of H2 (h2e[k,k,:,:] and h2e[:,:,k,k]); a naively
+symmetric 0.5/0.5 split silently gives incorrect energy. Verified against
+direct tensor diagonalization to 1e-15 Ha.
 
-Ядерный диполь входит как -mu_nuc_lam*D в H1, как
-+sqrt(w/2)*(mu_nuc_lam/nelec)*I в Heb (поскольку sum_pq delta_pq E_pq = N_el)
-и как +0.5*mu_nuc_lam^2 в ecore. При центрировании mu_nuc_lam = 0.
+The nuclear dipole enters as -mu_nuc_lam*D in H1, as
++sqrt(w/2)*(mu_nuc_lam/nelec)*I in Heb (since sum_pq delta_pq E_pq = N_el)
+and as +0.5*mu_nuc_lam^2 in ecore. When centered, mu_nuc_lam = 0.
 
-СХЕМЫ КОНЕЧНЫХ РАЗНОСТЕЙ
+FINITE DIFFERENCE SCHEMES
 ------------------------
-    --mode-dir 0 0 1   вдоль оси     ->  9 точек поля (7 с --fast)
-    --mode-dir 1 0 0   поперёк оси   -> 13 точек
-    --mode-dir 1 0 1   наклон в xz   -> 17 точек
-    --mode-dir 1 1 1   общий случай  -> 25 точек
+    --mode-dir 0 0 1   along axis     ->  9 field points (7 with --fast)
+    --mode-dir 1 0 0   across axis    -> 13 points
+    --mode-dir 1 0 1   tilt in xz     -> 17 points
+    --mode-dir 1 1 1   general case   -> 25 points
 
-Примеры:
+Examples:
     python qedfci_scan.py --mol H2 --lam 0.00 --omega 0.4687 \
         --rmin 0.74 --rmax 0.74 --verify
     python qedfci_scan.py --mol H2 --lam 0.10 --omega 0.4687 \
         --rmin 0.5 --rmax 4.0
 """
 
+
 import argparse
 import os
 import sys
 import time
-
 import numpy as np
-
 from pyscf import gto, scf, ao2mo, lib
 from pyscf.gto.basis import parse_gaussian
 from pyscf.fci import cistring, direct_spin1
@@ -95,9 +68,6 @@ COLUMNS = ['R',
            'boson_gap', 'status']
 
 
-# ════════════════════════════════════════════════════════════════
-#  Ядро электрон-бозонного FCI (из fci.py, без изменений)
-# ════════════════════════════════════════════════════════════════
 def fboson_ci_shape(norb, nelec, nmode=0, boson_states=None):
     if boson_states is not None:
         boson_states = (np.array([boson_states] * nmode)
@@ -299,14 +269,7 @@ def absorb_h1e(h1e, eri, norb, nelec, fac=0.5):
 
 def make_hdiag(h1e, eri, Hbb, norb, nelec, nmode, boson_states,
                floor=0.0):
-    r"""Диагональ гамильтониана для предобусловливателя Дэвидсона.
-
-    ВАЖНО: в исходном fci.py стояло max(i*omega, 0.5). При omega ~ 0.5
-    (электронный масштаб) это почти точное значение и вреда не приносит,
-    но при omega = 0.0064 (колебательный масштаб LiH) сдвиг фотонного
-    сектора завышается в ~78 раз, предобусловливатель перестаёт работать
-    и Дэвидсон сходится на порядки медленнее. Здесь по умолчанию берётся
-    точное i*omega; floor > 0 возвращает прежнее поведение.
+    r"""Диагональ гамильтониана
     """
     neleca, nelecb = _unpack_nelec(nelec)
     ci_shape = fboson_ci_shape(norb, nelec, nmode, boson_states)
@@ -407,7 +370,7 @@ def build_geometry_data(mol, omega, mode_vec, scf_conv_tol=1e-12,
                         z_fixed=None):
     """Один RHF и один ao2mo на геометрию; все полевые точки используют
     ОДНИ И ТЕ ЖЕ беспольевые МО. FCI инвариантен к вращению орбиталей,
-    поэтому это законно, а E(F) выходит глаже (меньше FD-шума)."""
+    поэтому это законно."""
     mf = scf.RHF(mol)
     mf.verbose = 0
     mf.conv_tol = scf_conv_tol
@@ -434,7 +397,7 @@ def build_geometry_data(mol, omega, mode_vec, scf_conv_tol=1e-12,
     H2_full = eri_full + np.einsum('pq,rs->pqrs', D, D)
     ecore_base = mol.energy_nuc() + 0.5 * mu_nuc_lam ** 2
 
-    # ── когерентно-состоянческое преобразование ────────────────
+    # ── CS преобразование ────────────────
     # U(z) = exp[z (b^+ - b)],  U^+ b U = b + z. В обозначениях кода
     # оператор связи есть Lambda = sum_pq D_pq E_pq - mu_nuc_lam, и
     # преобразование добавляет
@@ -443,14 +406,9 @@ def build_geometry_data(mol, omega, mode_vec, scf_conv_tol=1e-12,
     #     0.5*Lambda^2 - <Lambda>*Lambda + 0.5*<Lambda>^2 = 0.5*(Lambda-<Lambda>)^2,
     # то есть DSE становится членом с ФЛУКТУАЦИЕЙ диполя — как в QED-HF.
     #
-    # Зачем: в исходном кадре основное состояние полярной молекулы обязано
-    # построить смещение z = lambda*|mu|/sqrt(2*omega), и фотонный базис
-    # должен вместить пуассоновское распределение со средним |z|^2. Для LiH
-    # при lambda=0.1, omega=0.0064 это z ~ 2.05 и ~15 состояний Фока.
-    # После преобразования смещение снимается и хватает 2-3 состояний.
     #
     # z берётся из хартри-фоковского диполя ОДИН РАЗ на геометрию и
-    # одинаков для всех точек поля: так преобразование остаётся
+    # одинаков для всех точек внешнего поля: так преобразование остаётся
     # фиксированным унитарным и не вносит в производные лишней
     # зависимости от поля. Энергия от выбора z не зависит вовсе (при
     # сошедшемся числе фотонов) — это встроенная проверка.
@@ -557,7 +515,7 @@ def dse_only_energy(geom, field_vec, fci_tol=1e-10):
 
 
 # ════════════════════════════════════════════════════════════════
-#  Аргументы
+#  Arguments
 # ════════════════════════════════════════════════════════════════
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
@@ -569,12 +527,12 @@ def parse_args(argv=None):
     p.add_argument('--omega', type=float, default=0.4687)
     p.add_argument('--mode-dir', type=float, nargs=3, default=[0., 0., 1.],
                    metavar=('X', 'Y', 'Z'),
-                   help='направление поляризации моды, нормируется автоматически')
+                   help='mode polarization direction, normalized automatically')
     p.add_argument('--full-tensor', action='store_true',
-                   help='полный тензор даже при осевой моде (проверка симметрии)')
+                   help='full tensor even for axial mode (symmetry check)')
 
     p.add_argument('--basis-file', default='sadlej.gbs',
-                   help='путь к .gbs ИЛИ имя встроенного базиса PySCF')
+                   help='path to .gbs OR name of built-in PySCF basis')
     p.add_argument('--basis-label', default='sadlej')
 
     p.add_argument('--rmin', type=float, default=0.5)
@@ -583,39 +541,37 @@ def parse_args(argv=None):
 
     p.add_argument('--ff-step', type=float, default=0.004)
     p.add_argument('--fast', action='store_true',
-                   help='a_xx только по ±h (7 точек вместо 9)')
+                   help='a_xx only at ±h (7 points instead of 9)')
 
     p.add_argument('--nboson', type=int, default=6,
-                   help='максимальное число фотонов (состояний Фока nboson+1). '
-                        'Замер для H2 при lambda=0.1: шаги сходимости '
+                   help='maximum number of photons (Fock states nboson+1). '
+                        'Convergence test for H2 at lambda=0.1: step sizes '
                         '2e-6 (nb=3), 7e-8 (4), 2e-9 (6), 2e-12 (8) — '
-                        'шестёрки хватает с запасом')
+                        'six is enough with margin')
     p.add_argument('--boson-check', default='ends',
                    choices=['none', 'ends', 'all'],
-                   help='где проверять сходимость по числу фотонов')
+                   help='where to check photon number convergence')
     p.add_argument('--boson-check-list', type=int, nargs='+', default=None,
-                   help='значения nboson для проверки сходимости. По '
-                        'умолчанию подбираются относительно --nboson '
-                        '(половина и на два меньше), чтобы зазор считался '
-                        'между БЛИЗКИМИ значениями и говорил о сходимости '
-                        'именно рабочего nboson, а не о недостаточности '
-                        'заведомо малого')
+                   help='nboson values for convergence check. By default '
+                        'selected relative to --nboson (half and two less) so '
+                        'that the gap is computed between CLOSE values and '
+                        'indicates convergence of the working nboson, not '
+                        'insufficiency of an obviously small one')
     p.add_argument('--no-dse-only', action='store_true',
-                   help='не считать предел omega->0 (FCI+DSE без фотонной связи)')
+                   help='do not compute omega->0 limit (FCI+DSE without photon coupling)')
 
     p.add_argument('--slow-contract', action='store_true',
-                   help='эталонная питоновская свёртка вместо C-кода PySCF '
-                        '(на порядки медленнее, только для отладки)')
+                   help='reference Python contraction instead of PySCF C-code '
+                        '(orders of magnitude slower, debug only)')
     p.add_argument('--no-frame-check', action='store_true',
-                   help='не сверять энергию с КС-преобразованием и без него '
-                        'на первой точке (энергия от выбора кадра не зависит)')
+                   help='do not compare energy with and without gauge transformation '
+                        'at first point (energy is frame-independent)')
     p.add_argument('--no-contract-check', action='store_true',
-                   help='не сверять быстрый путь с эталонным на первой точке')
+                   help='do not compare fast path with reference at first point')
     p.add_argument('--hdiag-floor', type=float, default=0.0,
-                   help='нижняя отсечка сдвига фотонного сектора в '
-                        'предобусловливателе; 0 = точное i*omega (по '
-                        'умолчанию). Значение 0.5 воспроизводит поведение '
-                        'исходного fci.py — не используйте при малых omega')
+                   help='lower cutoff for photon sector shift in preconditioner; '
+                        '0 = exact i*omega (default). Value 0.5 reproduces '
+                        'original fci.py behavior — do not use for small omega')
     p.add_argument('--fci-tol', type=float, default=1e-11)
     p.add_argument('--fci-cycles', type=int, default=300)
     p.add_argument('--max-space', type=int, default=30)
@@ -624,34 +580,33 @@ def parse_args(argv=None):
 
     p.add_argument('--max-fail', type=int, default=3)
     p.add_argument('--z-damp', type=float, default=0.0, metavar='F',
-                   help='демпфирование самосогласования z: '
-                        'z_new = (1-F)*z_target + F*z_old. Помогает, если '
-                        'итерации колеблются вокруг решения')
+                   help='self-consistency damping for z: '
+                        'z_new = (1-F)*z_target + F*z_old. Helps if '
+                        'iterations oscillate around solution')
     p.add_argument('--z-tol', type=float, default=1e-3, metavar='EPS',
-                   help='порог сходимости z по остаточному числу фотонов '
+                   help='convergence threshold for z by photon number residual '
                         '|z_new^2 - z_old^2|')
     p.add_argument('--z-iter', type=int, default=3, metavar='N',
-                   help='итераций самосогласования когерентного сдвига по '
-                        'коррелированной плотности (0 = взять z из RHF, как '
-                        'делает QED-HF в OpenMS). Нужно там, где среднее поле '
-                        'плохо описывает диполь — у растянутого LiH требуется '
-                        '3-4 итерации, в равновесии хватает одной')
+                   help='self-consistency iterations of coherent shift by '
+                        'correlated density (0 = take z from RHF, as QED-HF does '
+                        'in OpenMS). Needed where mean field poorly describes dipole — '
+                        'stretched LiH requires 3-4 iterations, at equilibrium one suffices')
     p.add_argument('--no-coherent-state', action='store_true',
-                   help='не делать когерентно-состоянческое преобразование. '
-                        'Для полярных молекул при малых omega это резко '
-                        'увеличивает нужное число фотонов: смещение равно '
-                        'lambda*|mu|/sqrt(2*omega), и базис должен вместить '
-                        'пуассоновское распределение со средним |z|^2')
+                   help='do not perform coherent state transformation. '
+                        'For polar molecules at small omega this sharply '
+                        'increases required photon number: displacement equals '
+                        'lambda*|mu|/sqrt(2*omega), and basis must accommodate '
+                        'Poisson distribution with mean |z|^2')
     p.add_argument('--frozen', type=int, default=0, metavar='N',
-                   help='заморозить N низших МО (для LiH: --frozen 1, это '
-                        '1s^2 лития). Проверено на LiH/Sadlej при lambda=0: '
-                        'отклонение alpha от полного FCI -0.15..-0.31%% и '
-                        'почти постоянно по R, поэтому в разности '
-                        'alpha(lambda)-alpha(0) сокращается')
+                   help='freeze N lowest MOs (for LiH: --frozen 1, that is '
+                        'lithium 1s^2). Tested on LiH/Sadlej at lambda=0: '
+                        'deviation of alpha from full FCI -0.15..-0.31%% and '
+                        'nearly constant over R, so in difference '
+                        'alpha(lambda)-alpha(0) it cancels')
     p.add_argument('--no-center', action='store_true',
-                   help='не центрировать геометрию')
+                   help='do not center geometry')
     p.add_argument('--verify', action='store_true',
-                   help='при lam=0 сверить QED-FCI с обычным FCI из PySCF')
+                   help='at lam=0 compare QED-FCI with standard FCI from PySCF')
     p.add_argument('--resume', action='store_true')
     p.add_argument('--outdir', default='.')
     return p.parse_args(argv)
@@ -668,9 +623,9 @@ def normalise_mode_dir(mode_dir):
     v = np.asarray(mode_dir, float).ravel()
     n = np.linalg.norm(v)
     if n < 1e-12:
-        raise ValueError('--mode-dir не может быть нулевым вектором')
+        raise ValueError('--mode-dir cant be zero vector')
     if abs(n - 1.0) > 1e-10:
-        log(f'  --mode-dir нормирован: {v.tolist()} -> '
+        log(f'  --mode-dir normalized: {v.tolist()} -> '
             f'{np.round(v / n, 8).tolist()}')
     return v / n
 
@@ -838,7 +793,7 @@ def boson_convergence(geom, args):
     prev = None
     for nb in nbs:
         t0 = time.time()
-        # тёплый старт: вектор с меньшим nboson дополняем нулями
+
         init = None
         if prev is not None:
             shape = fboson_ci_shape(geom['norb'], geom['nelec'], 1, [nb])
@@ -865,20 +820,20 @@ def boson_convergence(geom, args):
 
 
 def refine_z(mol, args, mode_vec, geom, n_iter):
-    """Самосогласовывает когерентный сдвиг по КОРРЕЛИРОВАННОЙ плотности.
+    """Self-consistently adjusts coherent shift (z) by CORRELATED density.
 
-    Начальное z берётся из хартри-фоковского диполя. Для растянутого LiH
-    RHF держит ионную конфигурацию Li+H- и завышает диполь (при R=5.5 A
-    даёт z = 6.04 против самосогласованного -0.07), поэтому сдвиг
-    оказывается не там, где нужно, и фотонный базис приходится раздувать.
+    Initial z is taken from Hartree-Fock dipole. For stretched LiH, RHF holds
+    the ionic configuration Li+H- and overestimates the dipole (at R=5.5 Å
+    gives z = 6.04 versus self-consistent -0.07), so the shift ends up in the
+    wrong place and the photon basis must be inflated.
 
-    Условие стационарности: z = <Lambda>/sqrt(2*omega) с точной волновой
-    функцией. Энергия от выбора z не зависит вовсе (при сошедшемся числе
-    фотонов), поэтому итерации улучшают только сходимость по фотонам.
+    Stationarity condition: z = <Lambda>/sqrt(2*omega) with exact wavefunction.
+    Energy is completely independent of z choice (when photon number converges),
+    so iterations improve only photon convergence.
 
-    Критерий остановки задан по ОСТАТОЧНОМУ числу фотонов, а не по самому
-    dz: значение имеет |z|^2, поэтому вблизи нуля допуск можно ослабить.
-    Демпфирование гасит колебания вокруг решения.
+    Stopping criterion is set by RESIDUAL photon number, not by dz itself:
+    |z|^2 matters, so near zero the tolerance can be relaxed. Damping suppresses
+    oscillations around the solution.
     """
     if n_iter <= 0 or args.no_coherent_state or args.omega <= 0:
         return geom
