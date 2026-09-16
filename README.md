@@ -110,7 +110,3 @@ For each run the script writes two tab-separated files into `--outdir`:
 - `*_energies.txt` — the raw total energy at every finite-field point of
   the stencil, useful for independent post-processing or for comparison
   against other codes at the energy level.
-
-- `*_energies.txt` — the raw total energy at every finite-field point of
-  the stencil, useful for independent post-processing or for comparison
-  against other codes at the energy level.
