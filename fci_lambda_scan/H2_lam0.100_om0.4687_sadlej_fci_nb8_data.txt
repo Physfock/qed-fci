@@ -1,0 +1,30 @@
+# molecule         = H2
+# geometry         = H 0 0 0; H 0 0 {R:.6f}
+# basis            = sadlej
+# basis_source     = sadlej.gbs
+# lambda           = 0.100000
+# omega            = 0.468700
+# mode_dir         = [0.0, 0.0, 1.0]
+# scheme           = axial
+# offdiag          = none
+# method           = QED-FCI
+# nboson_max       = 8
+# n_fock_states    = 9
+# ff_step_h        = 0.001
+# n_field_points   = 7
+# fci_tol          = 1e-11
+# fci_max_cycle    = 300
+# scf_conv_tol     = 1e-12
+# center_geometry  = True
+# frozen_core_orbitals = 0
+# coherent_state   = True
+# z_selfconsistent_iter = 0
+# R_range_Ang      = 0.7414:0.1:0.7414
+# R_e_ref_Ang      = 0.7414
+# pyscf            = 2.11.0
+# python           = 3.13.13
+# host             = fedora
+# date             = 2026-08-29 10:51:01
+# columns          = R,mu_abs,mu_x,mu_y,mu_z,a_xx,a_yy,a_zz,a_xz,a_iso,err_xx,err_yy,err_zz,dse_mu_z,dse_a_xx,dse_a_yy,dse_a_zz,dse_a_iso,boson_gap,status
+#             R         mu_abs           mu_x           mu_y           mu_z           a_xx           a_yy           a_zz           a_xz          a_iso         err_xx         err_yy         err_zz       dse_mu_z       dse_a_xx       dse_a_yy       dse_a_zz      dse_a_iso      boson_gap         status
+     0.741400       0.000000      -0.000000       0.000000      -0.000000       4.315714       4.315714       6.489486       0.000000       5.040305            nan            nan       0.000191       0.000000       4.233060       4.233060       5.874944       4.780355       0.000000  OK
