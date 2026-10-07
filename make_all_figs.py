@@ -258,44 +258,64 @@ def fig5():
 
 
 # ════════════════════════════════════════════════════════════
-# FIG 6. Helium: state-resolved polarizabilities vs lambda
+# FIG 6. Helium: resonant cavity, separated components
 # ════════════════════════════════════════════════════════════
 def fig6():
     A = Q.atom_set()
-    fig, ax = plt.subplots(2, 1, figsize=(COL1, 4.4), sharex=True)
+    om = 0.0293
+    fig, ax = plt.subplots(
+        2, 1, figsize=(COL1, 4.4), sharex=True
+    )
+
     names = {'g': r'$1^1S_0$', 't': r'$2^3S_1$', 's': r'$2^1S_0$'}
     cols = {'g': '#0072B2', 't': '#D55E00', 's': '#009E73'}
-    for k, om in enumerate((0.1000, 0.0293)):
+    styles = {'g': '-', 't': '--', 's': ':'}
+    markers = {'g': 'o', 't': '^', 's': 'D'}
+
+    for k, comp in enumerate(('zz', 'xx')):
         for st in ('g', 't', 's'):
             d = A.get((st, om))
             if d is None:
                 continue
-            # выше lambda = 0.05 состояния 2^3S и 2^1S сильно смешаны с
-            # фотонными репликами 2P (перекрытие с беспольевым состоянием
-            # падает ниже 0.9), поэтому такие точки не показываем
+
             m = d['lambda'] <= 0.0501
             l = d['lambda'][m]
-            a0z, a0x = d['a_zz'][0], d['a_xx'][0]
-            ax[k].plot(l, 100 * (d['a_zz'][m] / a0z - 1), 'o-', ms=3.5,
-                       color=cols[st], label=names[st])
-            ax[k].plot(l, 100 * (d['a_xx'][m] / a0x - 1), 's--', ms=3,
-                       color=lighten(cols[st]))
-        ax[k].axhline(0, color='0.75', lw=0.5, zorder=0)
-        ax[k].set_ylabel(r'$\Delta\alpha_{ii}/\alpha_{ii}^{(0)}$ (%)')
+            a = d[f'a_{comp}']
+
+            ax[k].plot(
+                l, 100 * (a[m] / a[0] - 1),
+                color=cols[st],
+                linestyle=styles[st],
+                marker=markers[st],
+                lw=1.7, ms=4.2,
+                markeredgecolor='white',
+                markeredgewidth=0.4,
+                label=names[st]
+            )
+
+        ax[k].axhline(0, color='0.75', lw=0.6, zorder=0)
+        ax[k].set_ylabel(
+            rf'$\Delta\alpha_{{{comp}}}/\alpha_{{{comp}}}^{{(0)}}$ (%)'
+        )
         ax[k].xaxis.set_minor_locator(AutoMinorLocator(2))
         ax[k].yaxis.set_minor_locator(AutoMinorLocator(2))
-    leg = ax[0].legend(loc='upper left',
-                       title=r'(a) He, $\omega_{\rm c}=0.1000$ a.u.')
+
+    leg = ax[0].legend(
+        loc='upper left', handlelength=3,
+        title=r'(a) $\alpha_{zz}$, $\omega_{\rm c}=0.0293$ a.u.'
+    )
     leg.get_title().set_fontsize(LBL_FS)
-    h = [Line2D([], [], color='0.35', ls='-', marker='o', ms=3.5, label=r'$zz$'),
-         Line2D([], [], color=lighten('0.35'), ls='--', marker='s', ms=3,
-                label=r'$xx$')]
-    leg2 = ax[1].legend(handles=h, loc='upper left',
-                        title=r'(b) He, $\omega_{\rm c}=0.0293$ a.u.')
-    leg2.get_title().set_fontsize(LBL_FS)
+
+    ax[1].text(
+        0.04, 0.95,
+        r'(b) $\alpha_{xx}$, $\omega_{\rm c}=0.0293$ a.u.',
+        transform=ax[1].transAxes,
+        ha='left', va='top', fontsize=LBL_FS
+    )
+
     ax[1].set_xlabel(r'$\lambda$ (a.u.)')
     ax[1].set_xlim(-0.002, 0.053)
-    fig.subplots_adjust(hspace=0.06)
+    fig.subplots_adjust(hspace=0.08)
     save(fig, 'fig6_he_states')
 
 
