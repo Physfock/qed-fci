@@ -5,9 +5,22 @@ import re
 
 import numpy as np
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'work')
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# The data folder is called main_data/ in the GitHub repository and work/ or
+# data/ in older local copies. The first one that exists is used.
+_CANDIDATES = ('main_data', 'work', 'data')
+ROOT = next((os.path.join(_HERE, d) for d in _CANDIDATES
+             if os.path.isdir(os.path.join(_HERE, d))),
+            os.path.join(_HERE, _CANDIDATES[0]))
 MOL = os.path.join(ROOT, 'qedfci_frozen_cs+z_with_opt')
 ATOM = os.path.join(ROOT, 'qedfci_atom')
+
+
+def _require(path):
+    if not os.path.isdir(path):
+        raise FileNotFoundError(
+            f'data directory not found: {path}\n'
+            f'expected one of {_CANDIDATES} next to {os.path.basename(__file__)}')
 
 RE = {'H2': 0.7414, 'LiH': 1.5957}
 
@@ -46,6 +59,7 @@ def mol_set(system, regime, perp=False):
     are searched here; the pol+ filter picks out the right files regardless
     of which directory they came from.
     """
+    _require(MOL)
     base_dir = f'fci_{system}_{regime}'
     out = {}
     for d in (base_dir, base_dir + '_perp'):
@@ -59,11 +73,15 @@ def mol_set(system, regime, perp=False):
             if dat is None:
                 continue
             out[round(float(meta['lambda']), 4)] = dat
+    if not out:
+        raise FileNotFoundError(
+            f'no *_data.txt files for {system}/{regime} in {MOL}/{base_dir}')
     return out
 
 
 def atom_set():
     """-> {(state, omega): dict}; state in {'g','t','s'}"""
+    _require(ATOM)
     files = {
         ('g', 0.0293): 'he_ground/He_ms0_root0_om0.0293_aug-cc-pvtz+3d_data.txt',
         ('t', 0.0293): 'he_triplet/He_ms2_root0_om0.0293_aug-cc-pvtz+3d_data.txt',
