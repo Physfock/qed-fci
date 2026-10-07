@@ -37,7 +37,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 from matplotlib.lines import Line2D
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -452,11 +452,12 @@ def fig_cc_vs_fci():
     d_cc = 1000 * (e_cc - e_cc[0])
     d_fci = 1000 * (e_fci - e_fci[0])
 
-    fig, ax = plt.subplots(2, 1, figsize=(COL1, 4.4), sharex=True)
+    fig, ax = plt.subplots(2, 1, figsize=(COL1, 4.0), sharex=True,
+                           gridspec_kw={'height_ratios': [2, 1]})
 
     ax[0].plot(lam, d_hf, 'D-', ms=4, color='0.4', label='QED-HF')
     ax[0].plot(lam, d_cc, 's--', ms=4.5, color='#D55E00',
-              label='QED-CCSD-U22-S2')
+               label='QED-CCSD-U22-S2')
     ax[0].plot(lam, d_fci, 'o-', ms=4.5, color='#0072B2', label='QED-FCI')
     ax[0].set_ylabel(r'$E(\lambda)-E(0)$ (mHa)')
     ax[0].xaxis.set_minor_locator(AutoMinorLocator(2))
@@ -464,32 +465,26 @@ def fig_cc_vs_fci():
     leg = ax[0].legend(loc='upper left', title=r'(a) H$_2$, $R=R_e$')
     leg.get_title().set_fontsize(LBL_FS)
 
+    # (b) ratio on a narrow axis centred on its mean value
     ratio = d_cc[1:] / d_fci[1:]
+    mean = ratio.mean()
+    ax[1].axhline(mean, color='0.6', lw=0.8, ls=(0, (4, 2)), zorder=0)
     ax[1].plot(lam[1:], ratio, 'o-', ms=4.5, color='#D55E00')
-    ax[1].axhline(1.0, color='0.6', lw=0.8, ls=(0, (4, 2)))
-    ax[1].set_ylabel(r'$[E_{\rm CCSD}(\lambda)-E_{\rm CCSD}(0)]\,/\,'
-                     r'[E_{\rm FCI}(\lambda)-E_{\rm FCI}(0)]$')
+    ax[1].set_ylim(mean - 0.05, mean + 0.05)
+    ax[1].yaxis.set_major_locator(MultipleLocator(0.02))
+    ax[1].yaxis.set_minor_locator(AutoMinorLocator(2))
+    ax[1].set_ylabel(r'$\Delta E_{\rm CCSD}/\Delta E_{\rm FCI}$')
     ax[1].set_xlabel(r'$\lambda$ (a.u.)')
     ax[1].xaxis.set_minor_locator(AutoMinorLocator(2))
-    ax[1].yaxis.set_minor_locator(AutoMinorLocator(2))
     ax[1].set_xlim(-0.005, 0.155)
-    ax[1].text(0.05, 0.50, r'(b) QED-CCSD overestimates the cavity shift'
-              '\nby a factor of $\\approx 1.26$ at all $\\lambda$',
-              transform=ax[1].transAxes, va='top', fontsize=LBL_FS)
+    ax[1].text(0.03, 0.88, '(b)', transform=ax[1].transAxes, va='top',
+               fontsize=LBL_FS)
 
     fig.subplots_adjust(hspace=0.06)
     for ext in ('eps', 'pdf', 'png'):
         fig.savefig(os.path.join(OUT, f'fig_cc_vs_fci.{ext}'),
                     dpi=(600 if ext == 'png' else None))
     plt.close(fig)
-
-    print(f'{"lambda":>8s} {"E_HF":>15s} {"E_CCSD":>15s} {"E_FCI":>15s} '
-          f'{"dE_CCSD(mHa)":>13s} {"dE_FCI(mHa)":>12s} {"ratio":>7s}')
-    for i, r in enumerate(rows):
-        rat = d_cc[i] / d_fci[i] if i else float('nan')
-        print(f'{r["lam"]:8.3f} {r["e_hf"]:15.9f} {r["e_cc"]:15.9f} '
-              f'{r["e_fci"]:15.9f} {d_cc[i]:13.4f} {d_fci[i]:12.4f} '
-              f'{rat:7.3f}')
 
 
 
